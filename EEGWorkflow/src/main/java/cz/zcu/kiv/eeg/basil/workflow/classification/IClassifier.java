@@ -1,14 +1,14 @@
 package cz.zcu.kiv.eeg.basil.workflow.classification;
 
-import org.deeplearning4j.eval.Evaluation;
+
 
 import cz.zcu.kiv.eeg.basil.data.ClassificationStatistics;
 import cz.zcu.kiv.eeg.basil.data.FeatureVector;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.List;
+import org.nd4j.evaluation.classification.Evaluation;
 
 
 /**

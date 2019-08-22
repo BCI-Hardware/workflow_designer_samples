@@ -10,12 +10,14 @@ import cz.zcu.kiv.eeg.basil.data.EEGDataPackageList;
 import cz.zcu.kiv.eeg.basil.data.EEGMarker;
 import cz.zcu.kiv.eeg.basil.data.FeatureVector;
 
-import org.deeplearning4j.eval.Evaluation;
+
 
 import java.io.*;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+
+import org.nd4j.evaluation.classification.Evaluation;
 
 import static cz.zcu.kiv.WorkflowDesigner.Type.STREAM;
 
@@ -35,6 +37,20 @@ public class NeuralNetClassifierBlock implements Serializable {
 
     @BlockInput(name = "TestingFeatureVectors", type = STREAM)
     private PipedInputStream testingPipeIn  = new PipedInputStream();
+    
+    
+    /**
+     * Loads the configuration of the trained NN from file instead of training 
+     */
+    @BlockInput(name = "ClassifierConfiguration", type = STREAM)
+    private PipedInputStream configurationPipeIn;
+    
+    /**
+     * Stores the configuration of the trained NN into file
+     */
+    @BlockOutput(name = "ClassifierConfiguration", type = STREAM)
+    private PipedOutputStream configurationPipeOut = new PipedOutputStream();
+    
 
     private List<FeatureVector> trainingEEGData;
 
@@ -49,58 +65,67 @@ public class NeuralNetClassifierBlock implements Serializable {
 	public NeuralNetClassifierBlock(){
 		//Required Empty Default Constructor for Workflow Designer
 	}
+	
+	
+	class StreamReader extends Thread {
+		private ObjectInputStream ois;
+		private List<FeatureVector> featureVectors;
+
+	    public StreamReader(ObjectInputStream ois, List<FeatureVector> featureVectors) {
+	       this.ois = ois;
+	       this.featureVectors = featureVectors;
+	    }
+
+	    @Override
+		public void run() {
+			FeatureVector fv;
+			try {
+				while ((fv  = (FeatureVector) ois.readObject()) != null) {
+				    featureVectors.add(fv);
+				}
+			} catch (ClassNotFoundException | IOException e) {
+				System.err.println("Failed to read feature vectors from stream: " +  e.getMessage());
+			}
+		}
+	}
+	
 
 	@BlockExecute
-    public Object process() throws  IOException, ClassNotFoundException{
-
-        trainingEEGData = new ArrayList<>();
+    public Object process() throws  IOException, ClassNotFoundException, InterruptedException {
+		// testing data
         testingEEGData  = new ArrayList<>();
-        ObjectInputStream  trainObjectIn  = new ObjectInputStream(trainingPipeIn);
         ObjectInputStream  testObjectIn   = new ObjectInputStream(testingPipeIn);
-
-        System.out.println("before");
-        FeatureVector test = null, train = null;
-        boolean testF = true, trainF = true;
-
-        while(testF && trainF) {
-            if((test  = (FeatureVector) testObjectIn.readObject())!= null){
-                testingEEGData.add( test );
-                System.out.println("receive testVector");
-            } else {
-                testF = false;
-            }
-
-            if((train  = (FeatureVector) trainObjectIn.readObject())!= null){
-                trainingEEGData.add( train );
-                System.out.println("receive trainVector");
-            } else {
-                trainF = false;
-            }
-        }
-
-        if( testF && !trainF ) {
-            while ((test  = (FeatureVector) testObjectIn.readObject())!= null) {
-                testingEEGData.add(test);
-                System.out.println("receive testVector");
-            }
-        }
-        else if ( !testF && trainF ) {
-            while((train  = (FeatureVector) trainObjectIn.readObject())!= null){
-                trainingEEGData.add( train );
-                System.out.println("receive trainVector");
-            }
-        }
-
-        System.out.println("after");
-
-        trainObjectIn.close();
-        testObjectIn.close();
-        testingPipeIn.close();
-        trainingPipeIn.close();
-
+        FeatureVector test = null;
+        boolean testF = true;
+        StreamReader readTest = new StreamReader(testObjectIn, testingEEGData);
+        readTest.start();
+		
+		// training data
         SDADeepLearning4jClassifier classification = new SDADeepLearning4jClassifier(layerChain.layerArraylist);
-        Evaluation eval = classification.train(trainingEEGData, 10);
-        if(testingEEGData != null && testingEEGData.size() != 0) {
+        Evaluation eval = null;
+                
+        if (configurationPipeIn == null) { // configuration stream not available -> read training data and train
+	        trainingEEGData = new ArrayList<>();
+	        ObjectInputStream  trainObjectIn  = new ObjectInputStream(trainingPipeIn);
+	        FeatureVector train = null;
+	        boolean trainF = true;
+	        StreamReader readTrain = new StreamReader(trainObjectIn, trainingEEGData);
+	        readTrain.start();
+	        readTrain.join();
+	        eval = classification.train(trainingEEGData, 10);
+	        trainObjectIn.close();
+	        trainingPipeIn.close();
+        } else {
+        	classification.load(configurationPipeIn);
+        }
+        
+		readTest.join();
+	    testObjectIn.close();
+        testingPipeIn.close();
+        
+        
+        // testing
+        if (testingEEGData != null && testingEEGData.size() != 0) {
         	// collect expected labels
         	List<Double> expectedLabels = new ArrayList<Double>();
         	for (FeatureVector featureVector: testingEEGData) {
@@ -111,9 +136,13 @@ public class NeuralNetClassifierBlock implements Serializable {
             return statistics.toString();
 
         }
+        
+        // save to output stream
+        // classification.save(configurationPipeOut);
 
         Table table = new Table();
         List<List<String>> rows = new ArrayList<>();
+        
         rows.add(Arrays.asList("Precision",String.valueOf(eval.precision())));
         rows.add(Arrays.asList("Recall",String.valueOf(eval.recall())));
         rows.add(Arrays.asList("Accuracy",String.valueOf(eval.accuracy())));

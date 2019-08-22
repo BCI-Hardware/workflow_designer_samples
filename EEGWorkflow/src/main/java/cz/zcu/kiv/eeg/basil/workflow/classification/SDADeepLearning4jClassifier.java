@@ -1,7 +1,6 @@
 package cz.zcu.kiv.eeg.basil.workflow.classification;
 
 import org.deeplearning4j.api.storage.StatsStorage;
-import org.deeplearning4j.eval.Evaluation;
 import org.deeplearning4j.nn.api.OptimizationAlgorithm;
 import org.deeplearning4j.nn.conf.GradientNormalization;
 import org.deeplearning4j.nn.conf.MultiLayerConfiguration;
@@ -16,12 +15,13 @@ import org.nd4j.linalg.dataset.DataSet;
 import org.nd4j.linalg.dataset.SplitTestAndTrain;
 import org.nd4j.linalg.factory.Nd4j;
 import org.nd4j.linalg.learning.config.Nesterovs;
-
+import org.nd4j.evaluation.classification.Evaluation;
 import cz.zcu.kiv.eeg.basil.data.FeatureVector;
 
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
+
 
 /**
  * Created by lukasvareka on 27. 6. 2016.
@@ -64,8 +64,7 @@ public class SDADeepLearning4jClassifier extends DeepLearning4jClassifier implem
         DataSet dataSet2 = createDataSet(trainingFeatureVectors);
 
         SplitTestAndTrain tat = dataSet2.splitTestAndTrain(0.8);
-        Nd4j.ENFORCE_NUMERICAL_STABILITY = true; // Setting to enforce numerical stability
-
+        
         // Building a neural net
         build(numRows, numColumns, seed, listenerFreq);
 
@@ -80,7 +79,8 @@ public class SDADeepLearning4jClassifier extends DeepLearning4jClassifier implem
 
         Evaluation eval = new Evaluation(numColumns);
         DataSet tst = tat.getTest();
-        eval.eval(tst.getLabels(), model.output(tst.getFeatureMatrix(), org.deeplearning4j.nn.api.Layer.TrainingMode.TEST));
+                
+        eval.eval(tst.getLabels(), model.output(tst.getFeatures(), org.deeplearning4j.nn.api.Layer.TrainingMode.TEST));
         return eval;
     }
 
@@ -127,7 +127,7 @@ public class SDADeepLearning4jClassifier extends DeepLearning4jClassifier implem
                 for(int i=0;i<layers.size();i++){
                     builder.layer(i,layers.get(i));
                 }
-        MultiLayerConfiguration conf = builder.pretrain(false).backprop(true).build();
+        MultiLayerConfiguration conf = builder.build();
 /*                .list()
                 .layer(0, new AutoEncoder.Builder().nIn(numRows).nOut(24)
                         .weightInit(WeightInit.XAVIER)

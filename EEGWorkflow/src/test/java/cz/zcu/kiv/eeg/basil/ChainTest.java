@@ -68,7 +68,7 @@ public class ChainTest {
     @Test
     public void testEEGTestJSON() throws WrongTypeException, IOException, NoSuchMethodException, InstantiationException, IllegalAccessException, InvocationTargetException, FieldMismatchException, InterruptedException, ExecutionException {
 
-        String json = FileUtils.readFileToString(new File("src/test/resources/EEGTest.json"), Charset.defaultCharset());
+        String json = FileUtils.readFileToString(new File("src/test/resources/EEGTestANN.json"), Charset.defaultCharset());
 
         JSONObject jsonObject = new JSONObject(json);
         File outputFile = File.createTempFile("EEGTest__", ".json");
