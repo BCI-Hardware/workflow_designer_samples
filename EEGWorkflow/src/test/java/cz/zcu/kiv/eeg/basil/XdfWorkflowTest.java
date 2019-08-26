@@ -21,7 +21,7 @@ import cz.zcu.kiv.WorkflowDesigner.FieldMismatchException;
 public class XdfWorkflowTest {
 
 	@Test
-	public void testJSONLSL() throws IOException, NoSuchMethodException, InstantiationException, IllegalAccessException, InvocationTargetException, FieldMismatchException, InterruptedException, ExecutionException {
+	public void testJSONLSL() throws Exception{
 		String json = FileUtils.readFileToString(new File("src/test/resources/XDFFile.json"),Charset.defaultCharset());
 		JSONObject jsonObject = new JSONObject(json);
 		File outputFile = File.createTempFile("JSONLSL",".json");

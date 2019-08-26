@@ -46,7 +46,7 @@ public class ChainTest {
 
 
     @Test
-    public void testChainWorkflow() throws IOException, NoSuchMethodException, InstantiationException, IllegalAccessException, InvocationTargetException, FieldMismatchException, InterruptedException, ExecutionException {
+    public void testChainWorkflow() throws Exception {
         String json=FileUtils.readFileToString(new File("src/test/resources/chain.json"));
         JSONObject jsonObject = new JSONObject(json);
 
@@ -64,7 +64,7 @@ public class ChainTest {
     }
 
     @Test
-    public void testEEGTestJSON() throws IOException, NoSuchMethodException, InstantiationException, IllegalAccessException, InvocationTargetException, FieldMismatchException, InterruptedException, ExecutionException {
+    public void testEEGTestJSON() throws Exception{
 
         String json = FileUtils.readFileToString(new File("src/test/resources/EEGTest.json"), Charset.defaultCharset());
 
