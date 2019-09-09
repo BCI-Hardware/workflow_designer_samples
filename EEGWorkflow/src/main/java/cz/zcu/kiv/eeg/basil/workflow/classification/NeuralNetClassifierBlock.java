@@ -1,9 +1,7 @@
 package cz.zcu.kiv.eeg.basil.workflow.classification;
 
-import cz.zcu.kiv.WorkflowDesigner.Annotations.BlockExecute;
-import cz.zcu.kiv.WorkflowDesigner.Annotations.BlockInput;
-import cz.zcu.kiv.WorkflowDesigner.Annotations.BlockOutput;
-import cz.zcu.kiv.WorkflowDesigner.Annotations.BlockType;
+import cz.zcu.kiv.WorkflowDesigner.Annotations.*;
+import cz.zcu.kiv.WorkflowDesigner.Type;
 import cz.zcu.kiv.WorkflowDesigner.Visualizations.Table;
 import cz.zcu.kiv.eeg.basil.data.ClassificationStatistics;
 import cz.zcu.kiv.eeg.basil.data.EEGDataPackageList;
@@ -37,8 +35,13 @@ public class NeuralNetClassifierBlock implements Serializable {
 
     @BlockInput(name = "TestingFeatureVectors", type = STREAM)
     private PipedInputStream testingPipeIn  = new PipedInputStream();
-    
-    
+
+    @BlockProperty(name = "Load NN Model", type = Type.FILE)
+    private File modelLoadFile;
+
+    @BlockProperty(name = "Save NN Model", type = Type.FILE)
+    private File modelSaveFile;
+
     /**
      * Loads the configuration of the trained NN from file instead of training 
      */
@@ -103,8 +106,11 @@ public class NeuralNetClassifierBlock implements Serializable {
 		// training data
         SDADeepLearning4jClassifier classification = new SDADeepLearning4jClassifier(layerChain.layerArraylist);
         Evaluation eval = null;
-                
-        if (configurationPipeIn == null) { // configuration stream not available -> read training data and train
+
+        if(modelLoadFile != null && modelLoadFile.exists()){
+            classification.load(modelLoadFile.getAbsolutePath());
+        }
+        else if (configurationPipeIn == null) { // configuration stream not available -> read training data and train
 	        trainingEEGData = new ArrayList<>();
 	        ObjectInputStream  trainObjectIn  = new ObjectInputStream(trainingPipeIn);
 	        FeatureVector train = null;
@@ -118,12 +124,15 @@ public class NeuralNetClassifierBlock implements Serializable {
         } else {
         	classification.load(configurationPipeIn);
         }
-        
+
+        if(modelSaveFile != null){
+
+        }
+
 		readTest.join();
 	    testObjectIn.close();
         testingPipeIn.close();
-        
-        
+
         // testing
         if (testingEEGData != null && testingEEGData.size() != 0) {
         	// collect expected labels
