@@ -4,7 +4,6 @@ import cz.zcu.kiv.WorkflowDesigner.Annotations.*;
 import cz.zcu.kiv.WorkflowDesigner.Type;
 import cz.zcu.kiv.WorkflowDesigner.Visualizations.Table;
 import cz.zcu.kiv.eeg.basil.data.ClassificationStatistics;
-import cz.zcu.kiv.eeg.basil.data.EEGDataPackageList;
 import cz.zcu.kiv.eeg.basil.data.EEGMarker;
 import cz.zcu.kiv.eeg.basil.data.FeatureVector;
 
@@ -27,6 +26,8 @@ import static cz.zcu.kiv.WorkflowDesigner.Type.STREAM;
 @BlockType(type="NeuralNetClassifier",family = "Classification", runAsJar = true)
 public class NeuralNetClassifierBlock implements Serializable {
 
+    private final String SaveDir = "Shared";
+
 	@BlockInput(name = "Markers",type="EEGMarker[]")
 	private List<EEGMarker> markers;
 
@@ -39,8 +40,8 @@ public class NeuralNetClassifierBlock implements Serializable {
     @BlockProperty(name = "Load NN Model", type = Type.FILE)
     private File modelLoadFile;
 
-    @BlockProperty(name = "Save NN Model", type = Type.FILE)
-    private File modelSaveFile;
+    @BlockProperty(name = "Save NN Model", type = Type.STRING)
+    private String modelSaveFileName;
 
     /**
      * Loads the configuration of the trained NN from file instead of training 
@@ -125,8 +126,12 @@ public class NeuralNetClassifierBlock implements Serializable {
         	classification.load(configurationPipeIn);
         }
 
-        if(modelSaveFile != null){
-
+        if(modelSaveFileName != null){
+            File dir = new File(SaveDir);
+            if(dir.exists() && dir.isDirectory()){
+                File f = new File(dir, modelSaveFileName);
+                classification.save(f.getAbsolutePath());
+            }
         }
 
 		readTest.join();

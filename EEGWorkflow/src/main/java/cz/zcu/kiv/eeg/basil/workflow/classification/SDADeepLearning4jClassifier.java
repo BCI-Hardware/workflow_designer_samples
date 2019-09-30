@@ -18,6 +18,7 @@ import org.nd4j.linalg.learning.config.Nesterovs;
 import org.nd4j.evaluation.classification.Evaluation;
 import cz.zcu.kiv.eeg.basil.data.FeatureVector;
 
+import java.io.File;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
